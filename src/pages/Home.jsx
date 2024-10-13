@@ -1,5 +1,5 @@
 import React from "react";
-import DataManagement from "../components/DataManagement";
+import DataManagement from "../components/UserInfoTable";
 
 const Home = () => {
   return <DataManagement />;
