@@ -12,16 +12,10 @@ import {
   TextField,
   Button,
   Pagination,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import UserInfoModal from "./UserInfoModal";
-
-const drawerWidth = 200;
+import Sidebar from "../common/Sidebar"; // Sidebar 컴포넌트 사용
 
 export default function UserInfoTable() {
   const [page, setPage] = useState(1);
@@ -38,7 +32,12 @@ export default function UserInfoTable() {
     setModalOpen(true);
   };
 
-  const menuItems = ["유저정보", "카테고리", "후기", "문의답변"];
+  const menuItems = [
+    { text: "유저정보", path: "/" },
+    { text: "카테고리", path: "/category" },
+    { text: "후기", path: "/reviews" },
+    { text: "문의답변", path: "/questions" },
+  ];
 
   const users = [
     {
@@ -49,44 +48,21 @@ export default function UserInfoTable() {
       points: 3500,
       status: "Yes",
     },
-    // Add more user data here...
+    // 추가 유저 데이터를 여기다 넣을 수 있습니다...
   ];
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-            bgcolor: "grey.100",
-          },
-        }}
-      >
-        <List sx={{ pt: 2 }}>
-          {menuItems.map((text) => (
-            <ListItem key={text} disablePadding>
-              <ListItemButton
-                selected={selectedMenu === text}
-                onClick={() => setSelectedMenu(text)}
-                sx={{
-                  "&.Mui-selected": {
-                    bgcolor: "grey.300",
-                  },
-                }}
-              >
-                <ListItemText primary={text} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
+      {/* Sidebar 컴포넌트 사용 */}
+      <Sidebar
+        selectedMenu={selectedMenu}
+        setSelectedMenu={setSelectedMenu}
+        menuItems={menuItems}
+      />
+      {/* 메인 콘텐츠 */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: "auto" }}>
         <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
-          로그
+          유저 로그
         </Typography>
         <Paper sx={{ width: "100%", mb: 2 }}>
           <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
