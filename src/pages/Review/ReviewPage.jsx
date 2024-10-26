@@ -4,6 +4,6 @@ import React from "react";
 export default function ReviewPage() {
 
   return (
-    <p>test1</p>
+    <p>test2</p>
   );
 }
