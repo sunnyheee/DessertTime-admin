@@ -6,7 +6,7 @@ import CategoryPage from "./pages/Category/CategoryPage";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import theme from "./theme/theme";
 // import Logs from "./pages/Logs";
-// import Reviews from "./pages/Reviews";
+import ReviewPage from "./pages/Review/ReviewPage";
 // import Questions from "./pages/Questions";
 
 function App() {
@@ -18,9 +18,9 @@ function App() {
           <Route path="/" element={<Home />} />
           {/* <Route path="/userinfo" element={<UserInfoTable />} /> */}
           <Route path="/category" element={<CategoryPage />} />
-          {/* <Route path="/logs" element={<Logs />} />
-        <Route path="/reviews" element={<Reviews />} />
-        <Route path="/questions" element={<Questions />} /> */}
+          {/* <Route path="/logs" element={<Logs />} /> */}
+        <Route path="/reviews" element={<ReviewPage />} />
+        {/* <Route path="/questions" element={<Questions />} /> */}
         </Routes>
       </Router>
     </ThemeProvider>
