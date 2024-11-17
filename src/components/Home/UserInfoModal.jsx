@@ -175,7 +175,7 @@ export default function UserInfoModal({
         const responseData = await response.json();
         console.log("회원 삭제 성공:", responseData);
         alert("회원이 성공적으로 삭제되었습니다.");
-        onUserDelete(selectedUser.memberId); // Call the onUserDelete prop
+        onUserDelete(selectedUser.memberId); // 삭제된 사용자 제거
         handleCloseModal(); // Close the modal
       } else {
         const errorResponse = await response.text();

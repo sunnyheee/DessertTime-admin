@@ -19,11 +19,13 @@ import Sidebar from "../common/Sidebar"; // Sidebar 컴포넌트 사용
 
 export default function UserInfoTable() {
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [selectedMenu, setSelectedMenu] = useState("유저정보");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const itemsPerPage = 10; // 한 페이지에 보여줄 사용자 수
 
   // 데이터 가져오기
   useEffect(() => {
@@ -35,12 +37,15 @@ export default function UserInfoTable() {
 
       setLoading(true);
       try {
-        const response = await fetch(`${baseURL}/admin/member`, {
-          method: "GET",
-          headers: {
-            accept: "*/*",
-          },
-        });
+        const response = await fetch(
+          `${baseURL}/admin/member?pageNo=${page}&limitSize=${itemsPerPage}`,
+          {
+            method: "GET",
+            headers: {
+              accept: "*/*",
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -48,6 +53,7 @@ export default function UserInfoTable() {
 
         const result = await response.json();
         setUsers(result.data.items);
+        setTotalPages(Math.ceil(result.data.totalItem / itemsPerPage)); // 총 페이지 수 계산
       } catch (error) {
         console.error("Failed to fetch user data:", error);
       } finally {
@@ -179,7 +185,11 @@ export default function UserInfoTable() {
             </TableContainer>
           )}
           <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
-            <Pagination count={10} page={page} onChange={handleChangePage} />
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handleChangePage}
+            />
           </Box>
         </Paper>
       </Box>
