@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -22,14 +22,75 @@ export default function UserInfoTable() {
   const [selectedMenu, setSelectedMenu] = useState("유저정보");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 데이터 가져오기
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const baseURL = process.env.REACT_APP_API_BASE_URL;
+
+      setLoading(true);
+      try {
+        const response = await fetch(`${baseURL}/admin/member`, {
+          method: "GET",
+          headers: {
+            accept: "*/*",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        setUsers(result.data.items);
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [page]);
+
+  // 단건 유저 정보 가져오기
+  const handleRowClick = async (user) => {
+    const baseURL = process.env.REACT_APP_API_BASE_URL;
+
+    try {
+      const response = await fetch(`${baseURL}/admin/member/${user.memberId}`, {
+        method: "GET",
+        headers: { accept: "*/*" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      // memberId를 result.data에 추가
+      const userDataWithId = { ...result.data, memberId: user.memberId };
+      setSelectedUser(userDataWithId); // 단건 정보 설정
+      console.log(userDataWithId, "result.data with memberId");
+      setModalOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch single user data:", error);
+    }
+  };
+
+  const handleUpdateUser = (updatedUser) => {
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user.memberId === updatedUser.memberId ? updatedUser : user
+      )
+    );
+    setSelectedUser(updatedUser);
+  };
 
   const handleChangePage = (event, value) => {
     setPage(value);
-  };
-
-  const handleRowClick = (user) => {
-    setSelectedUser(user);
-    setModalOpen(true);
   };
 
   const menuItems = [
@@ -37,18 +98,6 @@ export default function UserInfoTable() {
     { text: "카테고리", path: "/category" },
     { text: "후기", path: "/reviews" },
     { text: "문의답변", path: "/questions" },
-  ];
-
-  const users = [
-    {
-      id: "135742",
-      email: "desserttime.project@gmail.com",
-      nickname: "프사",
-      membershipType: "Normal/Pro",
-      points: 3500,
-      status: "Yes",
-    },
-    // 추가 유저 데이터를 여기다 넣을 수 있습니다...
   ];
 
   return (
@@ -82,37 +131,43 @@ export default function UserInfoTable() {
               검색
             </Button>
           </Box>
-          <TableContainer sx={{ maxHeight: 440 }}>
-            <Table stickyHeader aria-label="sticky table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>회원번호</TableCell>
-                  <TableCell>ID email</TableCell>
-                  <TableCell>닉네임</TableCell>
-                  <TableCell>회원유형</TableCell>
-                  <TableCell>보유 포인트</TableCell>
-                  <TableCell>회원여부</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow
-                    key={user.id}
-                    hover
-                    onClick={() => handleRowClick(user)}
-                    sx={{ cursor: "pointer" }}
-                  >
-                    <TableCell>{user.id}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.nickname}</TableCell>
-                    <TableCell>{user.membershipType}</TableCell>
-                    <TableCell>{user.points}</TableCell>
-                    <TableCell>{user.status}</TableCell>
+          {loading ? (
+            <Typography sx={{ textAlign: "center", p: 2 }}>
+              로딩 중...
+            </Typography>
+          ) : (
+            <TableContainer sx={{ maxHeight: 440 }}>
+              <Table stickyHeader aria-label="sticky table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>회원번호</TableCell>
+                    <TableCell>ID email</TableCell>
+                    <TableCell>닉네임</TableCell>
+                    <TableCell>회원유형</TableCell>
+                    <TableCell>보유 포인트</TableCell>
+                    <TableCell>회원여부</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow
+                      key={user.memberId}
+                      hover
+                      onClick={() => handleRowClick(user)}
+                      sx={{ cursor: "pointer" }}
+                    >
+                      <TableCell>{user.memberId}</TableCell>
+                      <TableCell>{user.memberEmail}</TableCell>
+                      <TableCell>{user.nickName}</TableCell>
+                      <TableCell>{user.membershipType || "N/A"}</TableCell>
+                      <TableCell>{user.points || 0}</TableCell>
+                      <TableCell>{user.isUsable ? "Yes" : "No"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
           <Box sx={{ display: "flex", justifyContent: "center", p: 2 }}>
             <Pagination count={10} page={page} onChange={handleChangePage} />
           </Box>
@@ -123,6 +178,7 @@ export default function UserInfoTable() {
         setSelectedUser={setSelectedUser}
         modalOpen={modalOpen}
         setModalOpen={setModalOpen}
+        onUpdateUser={handleUpdateUser}
       />
     </Box>
   );
