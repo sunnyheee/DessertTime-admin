@@ -28,7 +28,10 @@ export default function UserInfoTable() {
   // 데이터 가져오기
   useEffect(() => {
     const fetchUsers = async () => {
-      const baseURL = process.env.REACT_APP_API_BASE_URL;
+      const baseURL =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_API_BASE_URL // 로컬 환경에서는 .env의 URL 사용
+          : "/api"; // Vercel 환경에서는 프록시 경로 사용
 
       setLoading(true);
       try {
@@ -57,7 +60,10 @@ export default function UserInfoTable() {
 
   // 단건 유저 정보 가져오기
   const handleRowClick = async (user) => {
-    const baseURL = process.env.REACT_APP_API_BASE_URL;
+    const baseURL =
+      process.env.NODE_ENV === "development"
+        ? process.env.REACT_APP_API_BASE_URL // 로컬 환경에서는 .env의 URL 사용
+        : "/api"; // Vercel 환경에서는 프록시 경로 사용
 
     try {
       const response = await fetch(`${baseURL}/admin/member/${user.memberId}`, {

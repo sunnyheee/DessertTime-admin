@@ -90,7 +90,11 @@ export default function UserInfoModal({
     console.log(updatedData, "updatedData");
 
     try {
-      const baseURL = process.env.REACT_APP_API_BASE_URL;
+      const baseURL =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_API_BASE_URL // 로컬 환경에서는 .env의 URL 사용
+          : "/api"; // Vercel 환경에서는 프록시 경로 사용
+
       const response = await fetch(
         `${baseURL}/admin/member/${selectedUser.memberId}`,
         {
