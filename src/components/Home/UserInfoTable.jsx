@@ -94,7 +94,11 @@ export default function UserInfoTable() {
     );
     setSelectedUser(updatedUser);
   };
-
+  const handleUserDelete = (deletedMemberId) => {
+    setUsers((prevUsers) =>
+      prevUsers.filter((user) => user.memberId !== deletedMemberId)
+    );
+  };
   const handleChangePage = (event, value) => {
     setPage(value);
   };
@@ -185,6 +189,7 @@ export default function UserInfoTable() {
         modalOpen={modalOpen}
         setModalOpen={setModalOpen}
         onUpdateUser={handleUpdateUser}
+        onUserDelete={handleUserDelete}
       />
     </Box>
   );

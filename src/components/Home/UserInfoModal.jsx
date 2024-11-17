@@ -26,8 +26,11 @@ export default function UserInfoModal({
   modalOpen,
   setModalOpen,
   onUpdateUser,
+  onUserDelete,
 }) {
   const [userData, setUserData] = useState({});
+  const [pointHistory, setPointHistory] = useState([]);
+
   const [tabValue, setTabValue] = useState(0);
   const [gender, setGender] = useState("N");
   const [isAgreeAlarm, setIsAgreeAlarm] = useState(
@@ -117,6 +120,71 @@ export default function UserInfoModal({
       }
     } catch (error) {
       console.error("네트워크 오류:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedUser?.memberId) {
+      const fetchPointHistory = async () => {
+        try {
+          const baseURL =
+            process.env.NODE_ENV === "development"
+              ? process.env.REACT_APP_API_BASE_URL
+              : "/api";
+
+          const response = await fetch(
+            `${baseURL}/admin/point-history/${selectedUser.memberId}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            setPointHistory(data.data.items || []);
+          } else {
+            console.error("포인트 히스토리 조회 중 오류:", response.statusText);
+          }
+        } catch (error) {
+          console.error("네트워크 오류:", error);
+        }
+      };
+
+      fetchPointHistory();
+    }
+  }, [selectedUser]);
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser || !selectedUser.memberId) {
+      console.error("memberId가 없습니다. selectedUser를 확인하세요.");
+      return;
+    }
+
+    try {
+      const baseURL =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_API_BASE_URL
+          : "/api";
+
+      const response = await fetch(
+        `${baseURL}/admin/member/${selectedUser.memberId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("회원 삭제 성공:", responseData);
+        alert("회원이 성공적으로 삭제되었습니다.");
+        onUserDelete(selectedUser.memberId); // Call the onUserDelete prop
+        handleCloseModal(); // Close the modal
+      } else {
+        const errorResponse = await response.text();
+        console.error("회원 삭제 중 오류:", errorResponse);
+        alert("회원 삭제에 실패하였습니다. 다시 시도해 주세요.");
+      }
+    } catch (error) {
+      console.error("네트워크 오류:", error);
+      alert("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
     }
   };
 
@@ -229,7 +297,7 @@ export default function UserInfoModal({
               </Box>
               <Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
                 <Typography variant="subtitle1" sx={{ mr: 3, mb: 0 }}>
-                  취향
+                  취향(TODO: 수정해야함)
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   {selectedUser?.uids?.map((uid) => (
@@ -239,7 +307,7 @@ export default function UserInfoModal({
               </Box>
               <Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
                 <Typography variant="subtitle1" sx={{ mr: 3, mb: 0 }}>
-                  주소
+                  주소(TODO: 수정해야함)
                 </Typography>
                 <Typography variant="body2">
                   {`${selectedUser?.firstCity || ""} ${
@@ -320,6 +388,7 @@ export default function UserInfoModal({
                     borderRadius: 2,
                     padding: "8px 16px",
                   }}
+                  onClick={handleDeleteUser}
                 >
                   삭제하기
                 </Button>
@@ -361,13 +430,23 @@ export default function UserInfoModal({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {[...Array(10)].map((_, index) => (
-                      <TableRow key={index}>
-                        <TableCell>2024.05.09 18:06:42</TableCell>
-                        <TableCell>+100</TableCell>
-                        <TableCell>[매뉴얼11111] 후기 등록</TableCell>
+                    {pointHistory.length > 0 ? (
+                      pointHistory.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.date}</TableCell>
+                          <TableCell>
+                            {item.points > 0 ? `+${item.points}` : item.points}
+                          </TableCell>
+                          <TableCell>{item.description}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center">
+                          포인트 내역이 없습니다.
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
