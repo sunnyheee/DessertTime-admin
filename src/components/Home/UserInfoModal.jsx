@@ -18,7 +18,7 @@ import {
   Avatar,
   Tab,
   Tabs,
-  Chip,
+  MenuItem,
 } from "@mui/material";
 export default function UserInfoModal({
   selectedUser,
@@ -37,12 +37,48 @@ export default function UserInfoModal({
     selectedUser?.isAgreeAlarm || false
   );
   const [userType, setUserType] = useState(selectedUser?.type || "N");
+  const [availableDessertCategories, setAvailableDessertCategories] = useState(
+    []
+  );
+
+  const baseURL =
+    process.env.NODE_ENV === "development"
+      ? process.env.REACT_APP_API_BASE_URL
+      : "/api";
 
   useEffect(() => {
     setUserData(selectedUser || {});
     setGender(selectedUser?.gender || "N");
     setIsAgreeAlarm(selectedUser?.isAgreeAlarm || false);
     setUserType(selectedUser?.type || "N");
+  }, [selectedUser]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${baseURL}/admin-dessert-category`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log("카테고리 데이터:", data); // 디버깅용 콘솔 출력
+          setAvailableDessertCategories(data.data.items || []);
+        } else {
+          console.error("카테고리 조회 실패:", response.statusText);
+        }
+      } catch (error) {
+        console.error("네트워크 오류:", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (selectedUser?.uids) {
+      const initialUidIds = selectedUser.uids.map(
+        (uid) => uid.dc.dessertCategoryId
+      );
+      setUserData((prevData) => ({ ...prevData, uidIdArr: initialUidIds }));
+    }
   }, [selectedUser]);
 
   const handleCloseModal = () => {
@@ -88,16 +124,11 @@ export default function UserInfoModal({
       type: userData.type,
       isAgreeAD: userData.isAgreeAD,
       isAgreeAlarm: userData.isAgreeAlarm,
-      uidIdArr: uidIdArr,
+      uidIdArr: userData.uidIdArr,
     };
     console.log(updatedData, "updatedData");
 
     try {
-      const baseURL =
-        process.env.NODE_ENV === "development"
-          ? process.env.REACT_APP_API_BASE_URL // 로컬 환경에서는 .env의 URL 사용
-          : "/api"; // Vercel 환경에서는 프록시 경로 사용
-
       const response = await fetch(
         `${baseURL}/admin/member/${selectedUser.memberId}`,
         {
@@ -201,7 +232,7 @@ export default function UserInfoModal({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "80%",
+          width: "90%",
           maxWidth: 600,
           maxHeight: "90vh",
           overflow: "auto",
@@ -295,7 +326,7 @@ export default function UserInfoModal({
                   </Button>
                 </Box>
               </Box>
-              <Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
+              {/* <Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
                 <Typography variant="subtitle1" sx={{ mr: 3, mb: 0 }}>
                   취향(TODO: 수정해야함)
                 </Typography>
@@ -304,16 +335,93 @@ export default function UserInfoModal({
                     <Chip key={uid.UIDid} label={uid.dc.dessertName} />
                   ))}
                 </Box>
+              </Box> */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  취향
+                </Typography>
+                <TextField
+                  select
+                  fullWidth
+                  label="취향 선택"
+                  variant="outlined"
+                  SelectProps={{
+                    multiple: true,
+                    value: userData?.uidIdArr || [],
+                    onChange: (e) => {
+                      const value = e.target.value;
+                      setUserData((prevData) => ({
+                        ...prevData,
+                        uidIdArr: value,
+                      }));
+                    },
+                    renderValue: (selected) =>
+                      selected
+                        .map((id) => {
+                          const category = availableDessertCategories.find(
+                            (item) => item.dessertCategoryId === id
+                          );
+                          return category ? category.dessertName : id;
+                        })
+                        .join(", "),
+                  }}
+                  helperText="취향을 선택하세요."
+                >
+                  {availableDessertCategories.map((category) => (
+                    <MenuItem
+                      key={category.dessertCategoryId}
+                      value={category.dessertCategoryId}
+                    >
+                      {category.dessertName}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Box>
-              <Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
+
+              <Box
+                sx={{
+                  mt: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                }}
+              >
                 <Typography variant="subtitle1" sx={{ mr: 3, mb: 0 }}>
-                  주소(TODO: 수정해야함)
+                  주소
                 </Typography>
-                <Typography variant="body2">
-                  {`${selectedUser?.firstCity || ""} ${
-                    selectedUser?.secondaryCity || ""
-                  } ${selectedUser?.thirdCity || ""}`}
-                </Typography>
+
+                <Box>
+                  <TextField
+                    fullWidth
+                    label="1차 지역"
+                    variant="outlined"
+                    margin="normal"
+                    value={userData?.firstCity || ""}
+                    onChange={(e) =>
+                      handleInputChange("firstCity", e.target.value)
+                    }
+                  />
+                  <TextField
+                    fullWidth
+                    label="2차 지역"
+                    variant="outlined"
+                    margin="normal"
+                    value={userData?.secondaryCity || ""}
+                    onChange={(e) =>
+                      handleInputChange("secondaryCity", e.target.value)
+                    }
+                  />
+                  <TextField
+                    fullWidth
+                    label="3차 지역"
+                    variant="outlined"
+                    margin="normal"
+                    value={userData?.thirdCity || ""}
+                    onChange={(e) =>
+                      handleInputChange("thirdCity", e.target.value)
+                    }
+                  />
+                </Box>
               </Box>
               <Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
                 <Typography
