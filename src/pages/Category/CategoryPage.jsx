@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Paper, Typography } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, Paper, Typography, Breadcrumbs, Link } from "@mui/material";
 import Sidebar from "../../components/common/Sidebar";
 import SearchBar from "../../components/Category/SearchBar";
 import CategoryButtons from "../../components/Category/CategoryButtons";
@@ -7,132 +7,161 @@ import AddCategoryDialog from "../../components/Category/AddCategoryDialog";
 
 export default function CategoryPage() {
   const [selectedMenu, setSelectedMenu] = useState("카테고리");
-  const [openDialog, setOpenDialog] = useState(false);
-  const [categoryName, setCategoryName] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [filteredCategories, setFilteredCategories] = useState([]);
+  const [searchText, setSearchText] = useState("");
   const [currentLevel, setCurrentLevel] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [searchText, setSearchText] = useState(""); // State for search input
-  const [parentCategory, setParentCategory] = useState(null);
+  const [highlightedCategory, setHighlightedCategory] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
 
-  // States for category selections
-  const [firstLevelCategory, setFirstLevelCategory] = useState("");
-  const [secondLevelCategory, setSecondLevelCategory] = useState("");
-  const [thirdLevelCategory, setThirdLevelCategory] = useState("");
-  const [fourthLevelCategory, setFourthLevelCategory] = useState("");
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
-  // Categories data
-  const categories = [
-    {
-      id: 1,
-      name: "케이크",
-      subCategories: [{ name: "마카롱" }, { name: "쿠키" }],
-    },
-    {
-      id: 2,
-      name: "빵",
-      subCategories: [{ name: "식빵" }, { name: "크로와상" }],
-    },
-  ];
+  // 1차 카테고리 불러오기
+  const loadCategories = async () => {
+    const baseURL =
+      process.env.NODE_ENV === "development"
+        ? process.env.REACT_APP_API_BASE_URL // 개발 환경에서는 .env 파일 사용
+        : "/api"; // Vercel 배포 환경에서는 프록시를 통해 API 요청
 
-  // Filter the categories based on the search text
-  const filteredCategories = categories.filter((category) =>
-    category.name.toLowerCase().includes(searchText.toLowerCase())
-  );
+    try {
+      const response = await fetch(`${baseURL}/dessert-category/all-list`, {
+        method: "GET",
+        headers: {
+          accept: "*/*",
+        },
+      });
 
-  const handleOpenDialog = () => {
-    setOpenDialog(true);
+      if (!response.ok) throw new Error("카테고리 불러오기 실패");
+
+      const data = await response.json();
+      setCategories(data.data || []);
+      setFilteredCategories(data.data || []);
+    } catch (error) {
+      console.error("API 요청 중 오류 발생:", error);
+    }
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setCategoryName("");
-  };
-
-  const handleAddCategory = () => {
-    console.log("Adding category:", {
-      firstLevelCategory,
-      secondLevelCategory,
-      thirdLevelCategory,
-      fourthLevelCategory,
-    });
-    handleCloseDialog();
-  };
-
+  // 카테고리 클릭 시 2차 카테고리 표시
   const handleCategoryClick = (category) => {
-    if (currentLevel === 1) {
+    if (currentLevel === 1 && category.nextCategory.length > 0) {
+      setFilteredCategories(category.nextCategory);
       setSelectedCategory(category);
-      setFirstLevelCategory(category.name);
       setCurrentLevel(2);
-    } else if (currentLevel === 2) {
-      setParentCategory(selectedCategory);
-      setSelectedCategory(category);
-      setSecondLevelCategory(category.name);
-      setCurrentLevel(3);
     }
   };
 
-  const handleBack = () => {
-    if (currentLevel === 3) {
-      setSelectedCategory(parentCategory);
-      setCurrentLevel(2);
-    } else if (currentLevel === 2) {
-      setSelectedCategory(null);
-      setCurrentLevel(1);
+  // 빵크럼에서 1차 카테고리로 돌아가기
+  const handleBackToFirstLevel = () => {
+    setFilteredCategories(categories);
+    setSelectedCategory(null);
+    setCurrentLevel(1);
+    setHighlightedCategory(null);
+  };
+
+  // 검색 기능
+  const handleSearch = () => {
+    if (!searchText.trim()) {
+      alert("검색어를 입력해주세요.");
+      return;
+    }
+
+    let foundCategory = null;
+
+    // 1차 카테고리 검색
+    for (let category of categories) {
+      if (category.dessertName.includes(searchText)) {
+        foundCategory = category;
+        break;
+      }
+
+      // 2차 카테고리 검색
+      for (let subCategory of category.nextCategory) {
+        if (subCategory.dessertName.includes(searchText)) {
+          setSelectedCategory(category);
+          setFilteredCategories(category.nextCategory);
+          setCurrentLevel(2);
+          foundCategory = subCategory;
+          break;
+        }
+      }
+
+      if (foundCategory) break;
+    }
+
+    if (foundCategory) {
+      setHighlightedCategory(foundCategory.dessertCategoryId);
+    } else {
+      alert("해당 카테고리를 찾을 수 없습니다.");
+      setHighlightedCategory(null);
     }
   };
+
+  const menuItems = [
+    { text: "유저정보", path: "/" },
+    { text: "카테고리", path: "/category" },
+    { text: "후기", path: "/reviews" },
+    { text: "문의답변", path: "/questions" },
+  ];
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
       <Sidebar
         selectedMenu={selectedMenu}
         setSelectedMenu={setSelectedMenu}
-        menuItems={[
-          { text: "유저정보", path: "/" },
-          { text: "카테고리", path: "/category" },
-          { text: "후기", path: "/reviews" },
-          { text: "문의답변", path: "/questions" },
-        ]}
+        menuItems={menuItems}
       />
-      <Box component="main" sx={{ flexGrow: 1, p: 3, overflow: "auto" }}>
-        {/* Search Bar */}
-        <Paper sx={{ mb: 2 }}>
-          <SearchBar searchText={searchText} setSearchText={setSearchText} />
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        {/* 검색 바 */}
+        <Paper sx={{ mb: 2, p: 2 }}>
+          <SearchBar
+            searchText={searchText}
+            setSearchText={setSearchText}
+            onSearch={handleSearch}
+          />
         </Paper>
 
-        {/* Category Buttons */}
-        <Paper sx={{ width: "100%", p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            {currentLevel === 1
-              ? "1차 카테고리"
-              : currentLevel === 2
-              ? "2차 카테고리"
-              : "3차 카테고리"}
+        {/* 카테고리 버튼 */}
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6">
+            {currentLevel === 1 ? "1차 카테고리" : "2차 카테고리"}
           </Typography>
-
+          {/* 빵크럼 (Breadcrumbs) */}
+          {currentLevel > 1 && (
+            <Box sx={{ mb: 2 }}>
+              <Breadcrumbs aria-label="breadcrumb">
+                <Link
+                  color="inherit"
+                  onClick={handleBackToFirstLevel}
+                  sx={{ cursor: "pointer" }}
+                >
+                  1차 카테고리
+                </Link>
+                {selectedCategory && (
+                  <Typography color="text.primary">
+                    {selectedCategory.dessertName}
+                  </Typography>
+                )}
+              </Breadcrumbs>
+            </Box>
+          )}
           <CategoryButtons
-            categories={filteredCategories} // Use filtered categories
+            categories={filteredCategories}
             currentLevel={currentLevel}
-            selectedCategory={selectedCategory}
+            highlightedCategory={highlightedCategory}
             handleCategoryClick={handleCategoryClick}
-            handleBack={handleBack}
-            handleOpenDialog={handleOpenDialog}
+            handleBack={handleBackToFirstLevel}
+            handleOpenDialog={() => setOpenDialog(true)}
           />
         </Paper>
       </Box>
 
-      {/* Add Category Dialog */}
       <AddCategoryDialog
         open={openDialog}
-        handleClose={handleCloseDialog}
-        firstLevelCategory={firstLevelCategory}
-        secondLevelCategory={secondLevelCategory}
-        setSecondLevelCategory={setSecondLevelCategory}
-        thirdLevelCategory={thirdLevelCategory}
-        setThirdLevelCategory={setThirdLevelCategory}
-        fourthLevelCategory={fourthLevelCategory}
-        setFourthLevelCategory={setFourthLevelCategory}
-        currentLevel={currentLevel}
-        handleAddCategory={handleAddCategory}
+        handleClose={() => setOpenDialog(false)}
+        handleAddCategory={() => {}}
       />
     </Box>
   );
