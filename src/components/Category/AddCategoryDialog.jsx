@@ -14,6 +14,7 @@ export default function AddCategoryDialog({
   handleAddCategory,
   selectedCategory,
 }) {
+  console.log(selectedCategory, "selectedCategory");
   const [categoryName, setCategoryName] = useState("");
 
   const handleSubmit = () => {
@@ -22,7 +23,7 @@ export default function AddCategoryDialog({
       return;
     }
     handleAddCategory(categoryName);
-    setCategoryName("");
+    setCategoryName(""); // 입력 필드 초기화
   };
 
   return (

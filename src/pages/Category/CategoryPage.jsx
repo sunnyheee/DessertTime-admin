@@ -14,6 +14,7 @@ export default function CategoryPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [highlightedCategory, setHighlightedCategory] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
+  console.log(selectedCategory, "selectedCategory");
 
   useEffect(() => {
     loadCategories();
@@ -59,6 +60,53 @@ export default function CategoryPage() {
     setSelectedCategory(null);
     setCurrentLevel(1);
     setHighlightedCategory(null);
+  };
+
+  const handleAddCategory = async (categoryName) => {
+    const isFirstLevel = currentLevel === 1;
+
+    try {
+      const baseURL =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_API_BASE_URL
+          : "/api";
+
+      const response = await fetch(`${baseURL}/admin-dessert-category`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          accept: "*/*",
+        },
+        body: JSON.stringify({
+          sessionNum: isFirstLevel ? 1 : 2,
+          parentDCId: isFirstLevel ? 0 : selectedCategory.dessertCategoryId,
+          dessertName: categoryName,
+        }),
+      });
+
+      if (!response.ok) throw new Error("카테고리 추가 실패");
+
+      const result = await response.json();
+      if (result.success) {
+        alert("카테고리가 성공적으로 추가되었습니다.");
+        // 상태 유지
+        await loadCategories();
+        if (!isFirstLevel && selectedCategory) {
+          const updatedCategory = categories.find(
+            (cat) =>
+              cat.dessertCategoryId === selectedCategory.dessertCategoryId
+          );
+          setSelectedCategory(updatedCategory);
+          setFilteredCategories(updatedCategory?.nextCategory || []);
+          setCurrentLevel(2); // 유지
+        }
+      }
+    } catch (error) {
+      console.error("API 요청 중 오류 발생:", error);
+      alert("카테고리 추가 중 오류가 발생했습니다.");
+    } finally {
+      setOpenDialog(false);
+    }
   };
 
   // 검색 기능
@@ -125,7 +173,7 @@ export default function CategoryPage() {
 
         {/* 카테고리 버튼 */}
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">
+          <Typography variant="h6" sx={{ mb: 2 }}>
             {currentLevel === 1 ? "1차 카테고리" : "2차 카테고리"}
           </Typography>
           {/* 빵크럼 (Breadcrumbs) */}
@@ -159,9 +207,10 @@ export default function CategoryPage() {
       </Box>
 
       <AddCategoryDialog
+        selectedCategory={selectedCategory}
         open={openDialog}
         handleClose={() => setOpenDialog(false)}
-        handleAddCategory={() => {}}
+        handleAddCategory={handleAddCategory}
       />
     </Box>
   );
