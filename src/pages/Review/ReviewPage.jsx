@@ -43,6 +43,57 @@ export default function ReviewPage() {
 
   const statusOptions = ["등록", "대기", "신고", "삭제"];
 
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  const fetchCategories = async () => {
+    try {
+      const baseURL =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_API_BASE_URL // 개발 환경에서는 .env 파일 사용
+          : "/api"; // Vercel 배포 환경에서는 프록시를 통해 API 요청
+
+      const response = await fetch(`${baseURL}/all-list`);
+      if (!response.ok)
+        throw new Error(`HTTP error! Status: ${response.status}`);
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        // nextCategory까지 포함하여 평탄화(Flatten)된 리스트 생성
+        const flattenCategories = (categories) => {
+          let allCategories = [];
+          categories.forEach((category) => {
+            allCategories.push({
+              dessertCategoryId: category.dessertCategoryId,
+              dessertName: category.dessertName,
+              parentDCId: category.parentDCId,
+            });
+            if (
+              Array.isArray(category.nextCategory) &&
+              category.nextCategory.length > 0
+            ) {
+              allCategories = allCategories.concat(
+                flattenCategories(category.nextCategory)
+              );
+            }
+          });
+          return allCategories;
+        };
+
+        const allCategories = flattenCategories(data.data);
+        setCategoryOptions(allCategories); // 모든 카테고리 데이터 저장
+      } else {
+        console.error("Failed to load categories:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  // 컴포넌트 마운트 시 카테고리 가져오기
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   // API 호출 함수
   const fetchReviews = async () => {
     const baseURL =
@@ -79,7 +130,7 @@ export default function ReviewPage() {
   // 데이터 가져오기
   useEffect(() => {
     fetchReviews();
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, searchFilters]);
 
   const handleChangePage = (event, value) => {
     setPage(value);
@@ -95,8 +146,60 @@ export default function ReviewPage() {
     setIsModalOpen(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log("수정된 데이터:", selectedReview);
+    if (!selectedReview) return;
+
+    try {
+      const baseURL =
+        process.env.NODE_ENV === "development"
+          ? process.env.REACT_APP_API_BASE_URL
+          : "/api";
+
+      const response = await fetch(
+        `${baseURL}/admin-review/${selectedReview.reviewId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            reviewId: selectedReview.reviewId,
+            dessertCategoryId: selectedReview.dessertCategoryId || null,
+            storeName: selectedReview.storeName || "",
+            menuName: selectedReview.menuName || "",
+            content: selectedReview.content || "",
+            adminMemo: selectedReview.adminMemo || "",
+            reviewIngredientIdArr:
+              selectedReview.ingredients?.map((ing) => ing.id) || [],
+            reviewImgs:
+              selectedReview.reviewImgs?.map((img, index) => ({
+                reviewImgId: img.id,
+                num: index + 1,
+                isMain: index === 0, // 첫 번째 이미지를 대표 이미지로 설정
+                isUsable: true,
+              })) || [],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        alert("리뷰가 성공적으로 수정되었습니다.");
+        fetchReviews(); // 수정 후 목록 새로고침
+        handleCloseModal(); // 모달 닫기
+      } else {
+        alert(`수정 실패: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("리뷰 수정 중 에러 발생:", error);
+      alert("리뷰 수정에 실패했습니다.");
+    }
+
     handleCloseModal();
   };
 
@@ -276,7 +379,10 @@ export default function ReviewPage() {
                         {review.reviewImgs.map((img) => (
                           <Grid item key={img.id} xs={3}>
                             <img
-                              src={`http://138.2.122.18:3000${img.tgtImgName}`}
+                              // src={`http://138.2.122.18:3000${img.tgtImgName}`}
+                              src={`/reviewImg/${img.tgtImgName
+                                .split("/")
+                                .pop()}`}
                               alt={img.orgImgName}
                               style={{ width: "100px", height: "auto" }}
                             />
@@ -337,83 +443,126 @@ export default function ReviewPage() {
           <DialogContent>
             {selectedReview && (
               <Box>
+                {/* 기본 정보 (수정 불가) */}
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <TextField
                     fullWidth
                     label="후기번호"
                     margin="normal"
-                    value={selectedReview.reviewId}
+                    value={selectedReview.reviewId || ""}
                     InputProps={{ readOnly: true }}
                   />
                   <TextField
                     fullWidth
                     label="닉네임"
                     margin="normal"
-                    value={selectedReview.nickName}
-                    onChange={(e) =>
-                      setSelectedReview((prev) => ({
-                        ...prev,
-                        nickName: e.target.value,
-                      }))
-                    }
+                    value={selectedReview.nickName || ""}
+                    InputProps={{ readOnly: true }}
                   />
                   <TextField
                     fullWidth
                     label="ID(이메일)"
                     margin="normal"
-                    value={selectedReview.memberEmail}
+                    value={selectedReview.memberEmail || ""}
                     InputProps={{ readOnly: true }}
                   />
-                  <TextField
+                </Box>
+
+                {/* 카테고리 선택 (수정 가능) */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography>카테고리</Typography>
+                  <Select
                     fullWidth
-                    label="카테고리"
-                    margin="normal"
-                    value={selectedReview.dessertName}
-                    onChange={(e) =>
+                    value={selectedReview.dessertCategoryId || ""}
+                    onChange={(e) => {
+                      const selectedCategory = categoryOptions.find(
+                        (category) =>
+                          category.dessertCategoryId === e.target.value
+                      );
                       setSelectedReview((prev) => ({
                         ...prev,
-                        dessertName: e.target.value,
-                      }))
-                    }
-                  />
-                </Box>
-                <Box
-                  sx={{
-                    mt: 2,
-                  }}
-                >
-                  <Typography>재료</Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 1,
+                        dessertCategoryId: e.target.value,
+                        dessertName: selectedCategory
+                          ? selectedCategory.dessertName
+                          : "",
+                      }));
                     }}
+                    displayEmpty
                   >
-                    {selectedReview.ingredients.map((ingredient, index) => (
-                      <Chip key={index} label={ingredient.value} />
+                    <MenuItem value="">카테고리 선택</MenuItem>
+                    {categoryOptions.map((category) => (
+                      <MenuItem
+                        key={category.dessertCategoryId}
+                        value={category.dessertCategoryId}
+                      >
+                        {category.dessertName}
+                      </MenuItem>
                     ))}
+                  </Select>
+                </Box>
+
+                {/* 가게명 & 메뉴명 */}
+                <TextField
+                  fullWidth
+                  label="가게명"
+                  margin="normal"
+                  value={selectedReview.storeName || ""}
+                  onChange={(e) =>
+                    setSelectedReview((prev) => ({
+                      ...prev,
+                      storeName: e.target.value,
+                    }))
+                  }
+                />
+                <TextField
+                  fullWidth
+                  label="메뉴명"
+                  margin="normal"
+                  value={selectedReview.menuName || ""}
+                  onChange={(e) =>
+                    setSelectedReview((prev) => ({
+                      ...prev,
+                      menuName: e.target.value,
+                    }))
+                  }
+                />
+
+                {/* 재료 (ingredients) 표시 */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography>재료</Typography>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {selectedReview.ingredients?.length > 0 ? (
+                      selectedReview.ingredients.map((ingredient, index) => (
+                        <Chip key={index} label={ingredient.value} />
+                      ))
+                    ) : (
+                      <Typography color="textSecondary">
+                        재료 정보 없음
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
+
+                {/* 후기 내용 입력 */}
                 <TextField
                   fullWidth
                   label="후기 내용"
                   margin="normal"
                   multiline
                   rows={4}
-                  value={selectedReview.content}
+                  value={selectedReview.content || ""}
                   onChange={(e) =>
                     setSelectedReview((prev) => ({
                       ...prev,
                       content: e.target.value,
                     }))
                   }
-                  sx={{
-                    mt: 4,
-                  }}
+                  sx={{ mt: 4 }}
                 />
+
+                {/* 이미지 리스트 */}
                 <Box sx={{ mt: 2, display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {selectedReview.reviewImgs.map((img, index) => (
+                  {selectedReview.reviewImgs?.map((img, index) => (
                     <Box key={index} sx={{ position: "relative" }}>
                       <img
                         src={`http://138.2.122.18:3000${img.tgtImgName}`}
@@ -437,9 +586,11 @@ export default function ReviewPage() {
                     </Box>
                   ))}
                 </Box>
+
+                {/* 신고 내역 */}
                 <Box sx={{ mt: 2 }}>
-                  <h4>신고 내역</h4>
-                  {selectedReview.accusations.length > 0 ? (
+                  <Typography variant="h6">신고 내역</Typography>
+                  {selectedReview.accusations?.length > 0 ? (
                     <Box>
                       {selectedReview.accusations.map((acc, idx) => (
                         <TextField
@@ -453,9 +604,26 @@ export default function ReviewPage() {
                       ))}
                     </Box>
                   ) : (
-                    <p>신고 내역이 없습니다.</p>
+                    <Typography color="textSecondary">
+                      신고 내역이 없습니다.
+                    </Typography>
                   )}
                 </Box>
+
+                {/* 관리자 메모 */}
+                <TextField
+                  fullWidth
+                  label="메모"
+                  margin="normal"
+                  value={selectedReview.memo || ""}
+                  onChange={(e) =>
+                    setSelectedReview((prev) => ({
+                      ...prev,
+                      memo: e.target.value,
+                    }))
+                  }
+                  sx={{ mt: 2 }}
+                />
               </Box>
             )}
           </DialogContent>
@@ -466,6 +634,7 @@ export default function ReviewPage() {
             </Button>
           </DialogActions>
         </Dialog>
+
         {/* 영수증 모달 */}
         <Dialog
           open={isReceiptDialogOpen}
