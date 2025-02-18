@@ -52,7 +52,7 @@ export default function ReviewPage() {
           ? process.env.REACT_APP_API_BASE_URL // 개발 환경에서는 .env 파일 사용
           : "/api"; // Vercel 배포 환경에서는 프록시를 통해 API 요청
 
-      const response = await fetch(`${baseURL}/all-list`);
+      const response = await fetch(`${baseURL}/dessert-category/all-list`);
       if (!response.ok)
         throw new Error(`HTTP error! Status: ${response.status}`);
 
